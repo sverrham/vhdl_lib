@@ -1,4 +1,4 @@
-[![](https://github.com/sverrham/vhdl_lib/workflows/VUnit%20Tests/badge.svg)](https://github.com/sverrham/vhdl_lib/actions)
+![example workflow](https://github.com/sverrham/vhdl_lib/actions/workflows/vhdl_test.yml/badge.svg)
 
 # vhdl_lib
 vhdl library

@@ -1,20 +1,16 @@
 name: VHDL library CI
 on:
   push:
-    branches:
-      - main
   pull_request:
-    branches:
-      - main
 
 jobs:
-  build:
+  action:
     runs-on: ubuntu-latest
-    
     steps:
 
     - uses: actions/checkout@v2
 
-    - uses: docker://ghdl/vunit:mcode
+    - name: Run VUnit tests
+      uses: ./
       with:
-        args: run.py
+        cmd: run.py

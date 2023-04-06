@@ -4,13 +4,13 @@ on:
   pull_request:
 
 jobs:
-  action:
+  build:
     runs-on: ubuntu-latest
+    
     steps:
 
     - uses: actions/checkout@v2
 
-    - name: Run VUnit tests
-      uses: ./
+    - uses: docker://ghdl/vunit:mcode
       with:
-        cmd: run.py
+        args: run.py

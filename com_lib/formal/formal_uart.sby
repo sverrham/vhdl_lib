@@ -1,0 +1,13 @@
+[options]
+mode prove
+
+[engines]
+abc pdr
+
+[script]
+ghdl -fpsl --std=08 -i --work=work uart.vhd formal_uart.vhd  -e formal_uart
+prep -top formal_uart
+
+[files]
+../hdl/uart.vhd
+formal_uart.vhd

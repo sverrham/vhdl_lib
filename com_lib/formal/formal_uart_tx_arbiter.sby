@@ -1,0 +1,15 @@
+[options]
+mode prove
+
+[engines]
+abc pdr
+
+[script]
+ghdl -fpsl --std=08 -i --work=com_lib com_pkg.vhd --work=work uart_tx_arbiter.vhd formal_uart_tx_arbiter.vhd  -e formal_uart_tx_arbiter
+
+prep -top formal_uart_tx_arbiter
+
+[files]
+../hdl/com_pkg.vhd
+../hdl/uart_tx_arbiter.vhd
+formal_uart_tx_arbiter.vhd

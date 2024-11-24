@@ -5,12 +5,14 @@ use ieee.numeric_std.all;
 library vunit_lib;
 context vunit_lib.vunit_context;
 
-
 library servo_lib;
 use servo_lib.servo_pkg.all;
 
+library osvvm;
+context osvvm.osvvmcontext;
+
 entity tb_servo is
-    generic (runner_cfg : string := "test");
+    generic (runner_cfg : string);
 end entity tb_servo;
 
 architecture rtl of tb_servo is
@@ -43,6 +45,7 @@ begin
     begin
         test_runner_setup(runner, runner_cfg);
 
+        log("Starting test", INFO, TRUE);
         
         wait for 10 ns;
         -- test the module by setting a position and checking the output
@@ -82,8 +85,7 @@ begin
         info(time'image(now));
         assert servo_out = servo_out_high report "Outputs did not go high" severity failure;
 
-
-
+        ReportAlerts;
         test_runner_cleanup(runner);
     end process;
 

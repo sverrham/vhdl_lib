@@ -1,0 +1,57 @@
+NET "clk_200_pi"         LOC = K21 |IOSTANDARD = LVDS_25;
+                                            
+#NET "clk" TNM_NET = "net_gclk_0";
+#TIMESPEC TS_net_gclk_0 = PERIOD "net_gclk_0" 8 ns;     # over constrained at 20ns, There should be a 27MHz (37ns) oscillator installed here.
+# SP605 board only                                            
+NET "led_o[0]"         LOC = D17 |IOSTANDARD = LVCMOS25        ;
+NET "led_o[1]"         LOC = AB4 |IOSTANDARD = LVCMOS25        ;
+NET "led_o[2]"         LOC = D21 |IOSTANDARD = LVCMOS25        ;
+NET "led_o[3]"         LOC = W15 |IOSTANDARD = LVCMOS25        ;
+
+# UART
+NET "uart_tx" LOC = B21 |IOSTANDARD = LVCMOS25        ;
+NET "uart_rx" LOC = H17 |IOSTANDARD = LVCMOS25        ;
+
+# phy signals
+net "phy_reset_o"   LOC = J22 |IOSTANDARD = LVCMOS25   ;
+net "mdc_o"         LOC = R19 |IOSTANDARD = LVCMOS25   ;
+net "mdio_io"       LOC = V20 |IOSTANDARD = LVCMOS25   ;
+
+# MII signals
+net "gmii_gtx_clk_o"     LOC = AB7 |IOSTANDARD = LVCMOS25   ;
+net "mii_tx_clk_i"       LOC = L20 |IOSTANDARD = LVCMOS25   ;
+net "mii_tx_er_o"        LOC = U8 |IOSTANDARD = LVCMOS25    ;
+net "mii_tx_en_o"        LOC = T8 |IOSTANDARD = LVCMOS25    ;
+net "mii_txd_o[0]"       LOC = U10 |IOSTANDARD = LVCMOS25   ;
+net "mii_txd_o[1]"       LOC = T10 |IOSTANDARD = LVCMOS25   ;
+net "mii_txd_o[2]"       LOC = AB8 |IOSTANDARD = LVCMOS25   ;
+net "mii_txd_o[3]"       LOC = AA8 |IOSTANDARD = LVCMOS25   ;
+net "mii_txd_o[4]"       LOC = AB9 |IOSTANDARD = LVCMOS25   ;
+net "mii_txd_o[5]"       LOC = Y9 |IOSTANDARD = LVCMOS25    ;
+net "mii_txd_o[6]"       LOC = Y12 |IOSTANDARD = LVCMOS25   ;
+net "mii_txd_o[7]"       LOC = W12 |IOSTANDARD = LVCMOS25   ;
+
+net "mii_rx_clk_i"       LOC = P20 |IOSTANDARD = LVCMOS25   ;
+net "mii_rx_er_i"        LOC = U20 |IOSTANDARD = LVCMOS25   ;
+net "mii_rx_dv_i"        LOC = T22 |IOSTANDARD = LVCMOS25   ;
+net "mii_rxd_i[0]"       LOC = P19 |IOSTANDARD = LVCMOS25   ;
+net "mii_rxd_i[1]"       LOC = Y22 |IOSTANDARD = LVCMOS25   ;
+net "mii_rxd_i[2]"       LOC = Y21 |IOSTANDARD = LVCMOS25   ;
+net "mii_rxd_i[3]"       LOC = W22 |IOSTANDARD = LVCMOS25   ;
+net "mii_rxd_i[4]"       LOC = W20 |IOSTANDARD = LVCMOS25   ;
+net "mii_rxd_i[5]"       LOC = V22 |IOSTANDARD = LVCMOS25   ;
+net "mii_rxd_i[6]"       LOC = V21 |IOSTANDARD = LVCMOS25   ;
+net "mii_rxd_i[7]"       LOC = U22 |IOSTANDARD = LVCMOS25   ;
+
+
+
+
+#Created by Constraints Editor (xc6slx45t-fgg484-3) - 2024/05/31
+#NET "mii_rx_clk_i" TNM_NET = "mii_rx_clk_i";
+NET "mii_rx_clk_i" TNM_NET = mii_rx_clk_i;
+TIMESPEC TS_mii_rx_clk_i = PERIOD "mii_rx_clk_i" 8 ns HIGH 50%;
+NET "mii_tx_clk_i" TNM_NET = mii_tx_clk_i;
+TIMESPEC TS_mii_tx_clk_i = PERIOD "mii_tx_clk_i" 8 ns HIGH 50%;
+
+NET "clk_200_pi" TNM_NET = "CLK_IN1_P";
+TIMESPEC "TS_CLK_IN1_P" = PERIOD "CLK_IN1_P" 5.0 ns HIGH 50% INPUT_JITTER 50.0ps;

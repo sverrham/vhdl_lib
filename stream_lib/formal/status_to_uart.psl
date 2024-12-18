@@ -1,0 +1,19 @@
+vunit formal_status_to_uart(status_to_uart(rtl)) {
+
+   -----------------------------------------------------------------
+   -- Assumptions
+   -----------------------------------------------------------------
+	default clock is rising_edge(clk);
+
+  -----------------------------------------------------------------
+   -- Assertions
+   -----------------------------------------------------------------
+  stable_output : assert always not rst and uart_data_vld and not uart_data_rdy -> next uart_data_vld and stable(uart_data);
+  
+	-----------------------------------------------------------------
+	-- Cover
+  -----------------------------------------------------------------
+ 	-- cover_receive_data : cover {not Rx_Valid; Rx_Valid};
+  cover_send_data: cover {uart_data_rdy and uart_data_vld; not uart_data_vld};
+ 	cover_pps: cover {pps; not pps};
+}

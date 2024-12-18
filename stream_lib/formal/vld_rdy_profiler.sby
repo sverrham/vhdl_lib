@@ -1,0 +1,28 @@
+[tasks]
+cover
+proof
+proof_bmc
+
+[options]
+depth 10 
+cover: mode cover
+proof: mode prove  
+proof_bmc: mode bmc
+
+[engines]
+cover: smtbmc yices
+proof: abc pdr 
+proof_bmc: smtbmc yices
+
+[script]
+ghdl --std=08  \
+--work=stream_lib status_pkg.vhd \
+vld_rdy_profiler.psl \
+vld_rdy_profiler.vhd -e vld_rdy_profiler
+
+prep -top vld_rdy_profiler
+
+[files]
+../hdl/vld_rdy_profiler.vhd
+../hdl/status_pkg.vhd
+./vld_rdy_profiler.psl

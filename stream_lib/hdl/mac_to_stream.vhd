@@ -42,15 +42,18 @@ architecture rtl of mac_to_stream is
     signal pkt_lengt_wrong : boolean;
     signal first_byte : boolean;
 
+    signal data_vld : std_logic;
+
 begin
+    data_vld_o <= data_vld;
 
     p_main : process (clk_i) is
         variable v_data : std_logic_vector(7 downto 0);
     begin
         if rising_edge(clk_i) then
             rd_en_o <= '0';
-            if data_rdy_i then
-                data_vld_o <= '0';
+            if data_rdy_i = '1' then
+                data_vld <= '0';
             end if;
 
             case state is
@@ -59,7 +62,7 @@ begin
                         state <= s_length;
                         data_o.data <= x"000000" & x"01";
                         data_o.tag <= SOF;
-                        data_vld_o <= '1';
+                        data_vld <= '1';
                         phase <= 0;
                         pkt_bytes(15 downto 8) <= unsigned(data_i); 
                         rd_en_o <= '1';
@@ -84,11 +87,15 @@ begin
                                 first_byte <= false;
                             end if;
 
-                            if data_rdy_i = '1' or data_vld_o = '0' then
+                            if data_rdy_i = '1' or data_vld = '0' then
                                 pkt_bytes <= pkt_bytes - 1;
                                 data_o.data <= v_data & data_buffer;
-                                data_o.tag <= EOF when pkt_bytes = 0 else DATA;
-                                data_vld_o <= '1';
+                                if pkt_bytes = 0 then
+                                    data_o.tag <= EOF;
+                                else
+                                    data_o.tag <= DATA;
+                                end if;
+                                data_vld <= '1';
                                 phase <= 0;
                             else
                                 rd_en_o <= '0';
@@ -96,7 +103,7 @@ begin
 
                         end case;
                     
-                    if empty_i = '1' and (data_rdy_i = '1' or data_vld_o = '0') then
+                    if empty_i = '1' and (data_rdy_i = '1' or data_vld = '0') then
                         pkt_lengt_wrong <= pkt_bytes /= 0;
                         rd_en_o <= '0';
                         state <= s_idle;
@@ -104,9 +111,9 @@ begin
 
             end case;
 
-            if rst_i then
+            if rst_i = '1' then
                 state <= s_idle;
-                data_vld_o <= '0';
+                data_vld <= '0';
             end if;
         end if;
     end process;

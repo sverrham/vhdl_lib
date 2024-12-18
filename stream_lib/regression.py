@@ -13,6 +13,9 @@ hr.set_library(library_name='stream_lib')
 hr.add_files(filename='hdl/*.vhd')
 hr.add_files(filename='tb/*.vhd')
 
+hr.set_library(library_name='olo_lib')
+hr.add_files(filename='../open-logic/src/base/vhdl/olo_base_pkg_array.vhd')
+
 
 # hr.set_result_check_string('Test passed')
 

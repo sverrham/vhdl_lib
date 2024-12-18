@@ -1,0 +1,6 @@
+[submodule "ethernet_mac"]
+	path = ethernet_mac
+	url = ../ethernet_mac.git
+[submodule "open-logic"]
+	path = open-logic
+	url = ../open-logic.git

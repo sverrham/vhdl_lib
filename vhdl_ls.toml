@@ -1,0 +1,46 @@
+
+[libraries]
+
+uvvm_util.files = [
+    'C:\Projects\vhdl\UVVM\uvvm_util\src\*.vhd',
+]
+
+uvvm_vvc_framework.files = [
+    'C:\Projects\vhdl\UVVM\uvvm_vvc_framework\src\*.vhd',
+]
+
+bitvis_vip_uart.files = [
+    'C:\Projects\vhdl\UVVM\bitvis_vip_uart\src\*.vhd',
+]
+
+
+com_lib.files = [
+    'com_lib\**\*.vhd',
+]
+
+network_lib.files = [
+    'network_lib\**\*.vhd',
+]
+
+reference_lib.files = [
+    'reference_lib\**\*.vhd',
+]
+
+servo_lib.files = [
+    'servo_lib\**\*.vhd',
+]
+
+stream_lib.files = [
+    'stream_lib\hdl\*.vhd',
+    'stream_lib\tb\*.vhd',
+]
+
+ethernet_mac.files = [
+  'ethernet_mac.git/hdl/*.vhd',
+  'ethernet_mac.git/hdl/generic/*.vhd',
+  'ethernet_mac.git/hdl/xilinx/*.vhd',
+]
+
+olo_lib.files = [
+    'open-logic\**\*.vhd'
+]

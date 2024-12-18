@@ -1,0 +1,19 @@
+vunit formal_vld_rdy_profiler(vld_rdy_profiler(rtl)) {
+
+   -----------------------------------------------------------------
+   -- Assumptions
+   -----------------------------------------------------------------
+	default clock is rising_edge(clk);
+
+  -----------------------------------------------------------------
+   -- Assertions
+   -----------------------------------------------------------------
+  stable_output : assert always status_vld and not status_rdy -> next status_vld and stable(status);
+  
+	-----------------------------------------------------------------
+	-- Cover
+  -----------------------------------------------------------------
+ 	-- cover_receive_data : cover {not Rx_Valid; Rx_Valid};
+  cover_send_data: cover {status_rdy and status_vld; not status_vld};
+ 	cover_pps: cover {pps; not pps};
+}

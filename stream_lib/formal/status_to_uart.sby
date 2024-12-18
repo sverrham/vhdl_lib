@@ -1,0 +1,30 @@
+[tasks]
+cover
+proof
+proof_bmc
+
+[options]
+depth 10 
+cover: mode cover
+proof: mode prove  
+proof_bmc: mode bmc
+
+[engines]
+cover: smtbmc yices
+proof: abc pdr 
+proof_bmc: smtbmc yices
+
+[script]
+ghdl --std=08  \
+--work=olo_lib olo_base_pkg_array.vhd \
+--work=stream_lib status_pkg.vhd \
+status_to_uart.psl \
+status_to_uart.vhd -e status_to_uart
+
+prep -top status_to_uart
+
+[files]
+../hdl/status_to_uart.vhd
+../hdl/status_pkg.vhd
+../../open-logic/src/base/vhdl/olo_base_pkg_array.vhd
+./status_to_uart.psl

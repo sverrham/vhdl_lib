@@ -21,6 +21,9 @@ function slv_to_stream(slv_data: std_logic_vector)
 function stream_tag_to_string(tag: t_stream_tag)
     return string;
 
+-- Stream tag types
+constant mac_raw_stream : std_logic_vector(7 downto 0) :=  x"01";
+
 end package stream_pkg;
 
 package body stream_pkg is

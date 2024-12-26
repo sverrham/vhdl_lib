@@ -11,6 +11,8 @@ library stream_lib;
 use stream_lib.stream_pkg.all;
 use stream_lib.status_pkg.all;
 
+library network_lib;
+
 entity ethernet_test_top is
     Port (  clk_200_pi : in  std_logic;
             clk_200_ni : in  std_logic;
@@ -162,18 +164,38 @@ begin
         data_rdy_i => data_stream_rdy
     );
 
-    vld_rdy_profiler_mac_output : entity stream_lib.vld_rdy_profiler
-    port map (
-        clk => clock_125,
-        vld => data_stream_vld,
-        rdy => data_stream_rdy,
-        pps => pps,
-        status => status,
-        status_rdy => status_rdy,
-        status_vld => status_vld
-    ); 
+    -- vld_rdy_profiler_mac_output : entity stream_lib.vld_rdy_profiler
+    -- port map (
+    --     clk => clock_125,
+    --     vld => data_stream_vld,
+    --     rdy => data_stream_rdy,
+    --     pps => pps,
+    --     status => status,
+    --     status_rdy => status_rdy,
+    --     status_vld => status_vld
+    -- ); 
     
-    data_stream_rdy <= '1';
+    arp_echo_to_status_inst : entity network_lib.arp_echo_to_status
+    port map (
+        clk_i => clock_125,
+        stream_i => data_stream,
+        stream_vld_i => data_stream_vld,
+        stream_rdy_o => data_stream_rdy,
+        status_o => status,
+        status_vld_o => status_vld,
+        status_rdy_i => status_rdy
+    );
+
+    -- stream_to_status_short_inst : entity stream_lib.stream_to_status_short
+    -- port map (
+    --     clk_i => clock_125,
+    --     stream_i => data_stream,
+    --     stream_vld_i => data_stream_vld,
+    --     stream_rdy_o => data_stream_rdy,
+    --     status_o => status,
+    --     status_vld_o => status_vld,
+    --     status_rdy_i => status_rdy
+    -- );
 
     -- olo_base_wconv_xn2n_i : entity olo_lib.olo_base_wconv_xn2n
     -- generic map (

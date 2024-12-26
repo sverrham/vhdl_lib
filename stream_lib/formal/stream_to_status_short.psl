@@ -1,0 +1,17 @@
+vunit formal_stream_to_status_short(stream_to_status_short(rtl)) {
+
+   -----------------------------------------------------------------
+   -- Assumptions
+   -----------------------------------------------------------------
+	default clock is rising_edge(clk_i);
+
+  -----------------------------------------------------------------
+   -- Assertions
+   -----------------------------------------------------------------
+  stable_output : assert always status_vld_o and not status_rdy_i -> next status_vld_o and stable(status_o);
+  
+	-----------------------------------------------------------------
+	-- Cover
+  -----------------------------------------------------------------
+  cover_send_data: cover {status_rdy_i and status_vld_o; not status_vld_o};
+}

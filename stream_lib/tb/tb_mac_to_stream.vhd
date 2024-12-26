@@ -115,13 +115,14 @@ begin
 
             v_pkt_length := 24;
             v_data_bytes := to_slv(v_pkt_length, 16);
+            uvvm_fifo_put(gen_data_fifo_idx, x"00"); --Extra byte, bug in mac?
             uvvm_fifo_put(gen_data_fifo_idx, v_data_bytes(15 downto 8));
             uvvm_fifo_put(gen_data_fifo_idx, v_data_bytes(7 downto 0));
 
             for i in 0 to v_pkt_length-1 loop
                 v_data := to_slv(i, 8);
                 uvvm_fifo_put(gen_data_fifo_idx, v_data);
-                v_check_data((8*((i mod 4)+1))-1 downto 8 * (i mod 4)) := v_data;
+                v_check_data(31-(8*(i mod 4)) downto 24 - (8 * (i mod 4))) := v_data;
                 if  i mod 4 = 3 then  
                     log(to_string(i) & " Pushing data: " & to_hstring(v_check_data));
                     if i = 23 then

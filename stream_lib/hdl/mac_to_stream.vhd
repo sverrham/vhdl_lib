@@ -12,6 +12,9 @@ use stream_lib.stream_pkg.all;
 -- 
 -- internal frame format defined in doc/ethernet_local_frame.md
 -- 
+-- This strips the pkt length from the ethernet mac module.
+-- we add one header word with the SOF tag and the rest is the 
+-- ethernet frame.
 entity mac_to_stream is
     port (
         clk_i : in std_logic;
@@ -30,7 +33,8 @@ architecture rtl of mac_to_stream is
 
     type t_state is (
         s_idle,
-        s_length,
+        s_length_high,
+        s_length_low,
         s_data
     );
 
@@ -59,8 +63,8 @@ begin
             case state is
                 when s_idle =>
                     if empty_i = '0' then
-                        state <= s_length;
-                        data_o.data <= x"000000" & x"01";
+                        state <= s_length_high;
+                        data_o.data <= x"000000" & mac_raw_stream;
                         data_o.tag <= SOF;
                         data_vld <= '1';
                         phase <= 0;
@@ -68,16 +72,23 @@ begin
                         rd_en_o <= '1';
                         pkt_lengt_wrong <= false;
                     end if;    
-                when s_length => 
+
+                when s_length_high =>
+                    rd_en_o <= '1';
+                    pkt_bytes(15 downto 8) <= unsigned(data_i);
+                    state <= s_length_low;
+
+                when s_length_low => 
                     rd_en_o <= '1';
                     pkt_bytes(7 downto 0) <= unsigned(data_i) - 1;
                     state <= s_data;
+
                 when s_data =>
                     rd_en_o <= '1';
                     case phase is
                         when 0 to 2 =>
                             pkt_bytes <= pkt_bytes - 1;
-                            data_buffer(7+phase*8 downto phase*8) <= data_i;
+                            data_buffer(23-phase*8 downto 16-phase*8) <= data_i;
                             phase <= phase + 1;
                             first_byte <= true;
                         when 3 =>
@@ -89,7 +100,7 @@ begin
 
                             if data_rdy_i = '1' or data_vld = '0' then
                                 pkt_bytes <= pkt_bytes - 1;
-                                data_o.data <= v_data & data_buffer;
+                                data_o.data <= data_buffer & v_data ;
                                 if pkt_bytes = 0 then
                                     data_o.tag <= EOF;
                                 else

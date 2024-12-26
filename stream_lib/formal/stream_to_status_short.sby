@@ -1,0 +1,29 @@
+[tasks]
+cover
+proof
+proof_bmc
+
+[options]
+depth 10 
+cover: mode cover
+proof: mode prove  
+proof_bmc: mode bmc
+
+[engines]
+cover: smtbmc yices
+proof: abc pdr 
+proof_bmc: smtbmc yices
+
+[script]
+ghdl --std=08  \
+--work=stream_lib status_pkg.vhd stream_pkg.vhd \
+stream_to_status_short.psl \
+stream_to_status_short.vhd -e stream_to_status_short
+
+prep -top stream_to_status_short 
+
+[files]
+../hdl/stream_to_status_short.vhd
+../hdl/status_pkg.vhd
+../hdl/stream_pkg.vhd
+./stream_to_status_short.psl

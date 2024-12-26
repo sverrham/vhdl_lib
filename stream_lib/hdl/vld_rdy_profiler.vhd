@@ -33,7 +33,7 @@ architecture rtl of vld_rdy_profiler is
     signal transitions : std_logic_vector(31 downto 0);
     signal transitions_vld : std_logic;
 
-    signal status_vld_reg : std_logic;
+    signal status_vld_reg : std_logic := '0';
 begin
 
 -- count transitions, and report between each pps

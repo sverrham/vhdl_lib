@@ -43,7 +43,7 @@ package transaction_pkg is
   -- Note: if these constants are to be flexible, create similar constants in adaptations_pkg
   -- and use them to assign these constants, see other UVVM VIPs for guidance on how it's done.
   -- Example:
-  constant C_VVC_CMD_DATA_MAX_LENGTH   : natural := 32;
+  constant C_VVC_CMD_DATA_MAX_LENGTH   : natural := 40;
   --constant C_VVC_CMD_ADDR_MAX_LENGTH   : natural := 32;
   constant C_VVC_CMD_STRING_MAX_LENGTH : natural := 300;
   constant C_VVC_MAX_INSTANCE_NUM      : natural := C_MAX_VVC_INSTANCE_NUM;

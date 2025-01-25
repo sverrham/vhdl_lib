@@ -47,7 +47,7 @@ begin
     p_main : process
         procedure expect_receive(constant data : std_logic_vector; constant msg : string) is
         begin
-            VLD_RDY_VVC_SB.add_expected(X"0000_00" & data, msg);
+            VLD_RDY_VVC_SB.add_expected(X"0000_0000" & data, msg);
             vld_rdy_receive(VLD_RDY_VVCT, UART_VVC_IDX, msg, TO_SB);
         end procedure expect_receive;
 

@@ -47,8 +47,8 @@ begin
             insert_delay(VLD_RDY_VVCT, 1, TX, 100 ns);
             vld_rdy_write(VLD_RDY_VVCT, 1, x"12345679", "Something"); 
             
-            VLD_RDY_VVC_SB.add_expected(X"12345678", "expect 1");
-            VLD_RDY_VVC_SB.add_expected(X"12345679", "expect 2");
+            VLD_RDY_VVC_SB.add_expected(X"0012345678", "expect 1");
+            VLD_RDY_VVC_SB.add_expected(X"0012345679", "expect 2");
             
 
             vld_rdy_receive(VLD_RDY_VVCT, 1, "Something else", TO_SB);
@@ -91,7 +91,7 @@ begin
                 seed := random(32);
                 data_to_send := std_logic_vector(unsigned(seed)+i);
                 vld_rdy_write(VLD_RDY_VVCT, 1, data_to_send, "Something"); 
-                VLD_RDY_VVC_SB.add_expected(data_to_send, "expect 1");
+                VLD_RDY_VVC_SB.add_expected(X"00" & data_to_send, "expect 1");
                 vld_rdy_receive(VLD_RDY_VVCT, 1, "Something else", TO_SB);
             end loop;
 
@@ -123,7 +123,7 @@ begin
                 seed := X"5555_5678";
                 data_to_send := std_logic_vector(unsigned(seed)+i);
                 vld_rdy_write(VLD_RDY_VVCT, 1, data_to_send, "Something"); 
-                VLD_RDY_VVC_SB.add_expected(data_to_send, "expect 1");
+                VLD_RDY_VVC_SB.add_expected(X"00" & data_to_send, "expect 1");
                 vld_rdy_receive(VLD_RDY_VVCT, 1, "Something else", TO_SB);
                 insert_delay(VLD_RDY_VVCT, 1, TX, clock_period*cycles_between);
                 

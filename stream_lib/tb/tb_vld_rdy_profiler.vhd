@@ -111,7 +111,7 @@ begin
         rdy <= '0';
         vld <= '1';
         wait until rising_edge(clk);
-        VLD_RDY_VVC_SB.add_expected(X"0000_0001", "expected one word");
+        VLD_RDY_VVC_SB.add_expected(X"00_0000_0001", "expected one word");
         vld_rdy_receive(VLD_RDY_VVCT, 1, "one workd", TO_SB);
         gen_pulse(pps, clk, 1, "gen pps signal");
 

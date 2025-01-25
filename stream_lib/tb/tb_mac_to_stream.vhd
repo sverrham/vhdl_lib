@@ -12,6 +12,12 @@ library uvvm_util;
 context uvvm_util.uvvm_util_context;
 use uvvm_util.data_fifo_pkg.all;
 
+library uvvm_vvc_framework;
+use uvvm_vvc_framework.ti_vvc_framework_support_pkg.all;
+
+library vip_vld_rdy;
+context vip_vld_rdy.vvc_context;
+
 
 entity tb_mac_to_stream is
 end entity;
@@ -26,19 +32,17 @@ architecture rtl of tb_mac_to_stream is
     signal data_vld : std_logic;
     signal data_rdy : std_logic;
     signal data_o : t_stream;
-    signal pause_vld : std_logic := '0';
 
     constant clk_period : time := 12.5 ns;
-
     constant gen_data_fifo_idx :  integer := 0;
-    constant check_data_fifo_idx :  integer := 1;
-
-
     constant buffer_size_bits: integer := 512;
    
-    signal valid_probability : integer := 100;
+    constant STREAM_VVC_IDX : integer := 1;
 
 begin
+    
+    i_ti_uvvm_engine : entity uvvm_vvc_framework.ti_uvvm_engine;
+
     p_input_data : process
     begin
         await_unblock_flag("mac_data_flag", 1 us, "waiting for mac_data_flag to be unlocked");
@@ -61,47 +65,19 @@ begin
 
     end process;
 
-    p_check_output_data : process
-        variable v_expected : t_stream;
-    begin
-        await_unblock_flag("mac_data_flag", 1 us, "waiting for mac_data_flag to be unlocked");
-        log("Getting data");
-
-        get_data_loop : while true loop 
-            wait until falling_edge(clk);
-            if data_vld and data_rdy then
-                -- Check data against expected
-                v_expected := slv_to_stream(uvvm_fifo_get(check_data_fifo_idx, 32+2));
-                check_value(data_o.data, v_expected.data, "check output data as expected");
-                if data_o.tag /= v_expected.tag then
-                    alert(TB_ERROR, "wrong tag, received: " & stream_tag_to_string(data_o.tag) & " expected: " & stream_tag_to_string(v_expected.tag));                    
-                end if;
-
-            end if;
-        end loop get_data_loop; 
-
-        wait;    
-    end process;
-
-    p_pause_pattern : process 
-        variable v_percent : integer range 0 to 100;
-    begin
-        wait until rising_edge(clk);
-        v_percent := random(0, 100);
-        pause_vld <= '0';
-        if v_percent < valid_probability then
-            pause_vld <= '1';
-        end if;
-    end process p_pause_pattern;
-
-    data_rdy <= data_vld and pause_vld;
-
-
     p_main : process
         function to_slv(value : integer; length : integer) return std_logic_vector is
         begin
             return std_logic_vector(to_unsigned(value, length));
         end function;
+
+
+        procedure expect_receive(constant data : std_logic_vector; constant msg : string) is
+        begin
+            VLD_RDY_VVC_SB.add_expected("000000" & data, msg);
+            vld_rdy_receive(VLD_RDY_VVCT, STREAM_VVC_IDX, msg, TO_SB);
+        end procedure expect_receive;
+
 
         procedure pd_gen_testdata  (constant void : t_void ) is
             variable v_check_data : std_logic_vector(31 downto 0);
@@ -111,7 +87,7 @@ begin
             variable v_pkt_length : natural;
         begin
             -- header
-            uvvm_fifo_put(check_data_fifo_idx, stream_to_slv((data=>x"00000001", tag=>SOF)));
+            expect_receive(stream_to_slv((data=>x"0000_0001", tag=>SOF)), "SOF");
 
             v_pkt_length := 24;
             v_data_bytes := to_slv(v_pkt_length, 16);
@@ -132,16 +108,17 @@ begin
                         v_tag := DATA;
                     end if;
                     
-                    uvvm_fifo_put(check_data_fifo_idx, stream_to_slv((data=>v_check_data, tag => v_tag)));
+                    expect_receive(stream_to_slv((data=>v_check_data, tag => v_tag)), "Data");
                 end if;
             end loop;
 
         end procedure;
     begin
+        await_uvvm_initialization(VOID);
+
         log("Starting simulation");
         gen_pulse(rst, clk, 10, "Rst signal");
         uvvm_fifo_init(gen_data_fifo_idx, buffer_size_bits-1);
-        uvvm_fifo_init(check_data_fifo_idx, buffer_size_bits-1);
         unblock_flag("mac_data_flag", "unblocking data flag", global_trigger);
         
         log("Check defaults");
@@ -150,19 +127,18 @@ begin
 
 
         log("Test readout frame no pause pattern.");
-        valid_probability <= 100;
+        shared_vld_rdy_vvc_config(RX, STREAM_VVC_IDX).bfm_config.pause_probability := 0.0;
         pd_gen_testdata(VOID);
-
-        wait for 1 us;
-        check_value(uvvm_fifo_get_count(check_data_fifo_idx), 0, "Check all verfication data is consumed");
+        await_completion(ALL_VVCS, 1 us, "Wait for data done");
 
         log("Test readout frame with pause pattern.");
-        valid_probability <= 10;
+        shared_vld_rdy_vvc_config(RX, STREAM_VVC_IDX).bfm_config.pause_probability := 0.9;
         pd_gen_testdata(VOID);
-        
-        wait for 1 us;
-        check_value(uvvm_fifo_get_count(check_data_fifo_idx), 0, "Check all verfication data is consumed");
+        await_completion(ALL_VVCS, 1 us, "Wait for data done");
 
+        check_value(VLD_RDY_VVC_SB.is_empty(VOID), ERROR, "SB is not empty");
+        VLD_RDY_VVC_SB.report_counters(VOID);
+ 
         report_alert_counters(FINAL);
         std.env.stop;
         wait;
@@ -187,6 +163,22 @@ begin
         data_vld_o => data_vld,
         data_rdy_i => data_rdy
     );
+
+    i_vld_rdy_vvc : entity vip_vld_rdy.vld_rdy_vvc
+    generic map (
+        GC_DATA_WIDTH => 34,
+        GC_INSTANCE_IDX => STREAM_VVC_IDX 
+    )
+    port map (
+        tx_data => open,
+        tx_data_vld => open,
+        tx_data_rdy => '0',
+        rx_data => stream_to_slv(data_o),
+        rx_data_vld => data_vld,
+        rx_data_rdy => data_rdy,
+        clk => clk
+    );
+
 
 
 end architecture;

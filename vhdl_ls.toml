@@ -13,6 +13,10 @@ bitvis_vip_uart.files = [
     'C:\Projects\vhdl\UVVM\bitvis_vip_uart\src\*.vhd',
 ]
 
+vip_vld_rdy.files = [
+    'vld_rdy_vvc\**\*.vhd',
+]
+
 
 com_lib.files = [
     'com_lib\**\*.vhd',

@@ -46,6 +46,8 @@ begin
 
     uart_data_vld <= uart_data_vld_reg;
 
+    status_rdy <= status_vld when state = data_s and (uart_data_vld_reg = '0' or uart_data_rdy = '1') else '0';
+
    process (clk)
     variable byte : integer range 0 to 3 := 0;
    begin
@@ -53,7 +55,7 @@ begin
         if uart_data_rdy = '1' then
             uart_data_vld_reg <= '0';
         end if;
-        status_rdy <= '0';
+        -- status_rdy <= '0';
         
         case state is      
             when header_s =>
@@ -91,7 +93,7 @@ begin
                 -- send data on input channel until EOF
                 if status_vld = '1' then
                     if uart_data_vld_reg = '0' or uart_data_rdy = '1' then
-                        status_rdy <= '1';
+                        -- status_rdy <= '1';
                         uart_data <= status.data;
                         uart_data_vld_reg <= '1';
 
@@ -132,7 +134,7 @@ begin
 
             if rst = '1' then
                 state <= header_s;
-                status_rdy <= '0';
+                -- status_rdy <= '0';
                 uart_data_vld_reg <= '0';
             end if;
     end if;

@@ -8,8 +8,14 @@ library uvvm_util;
 context uvvm_util.uvvm_util_context;
 use uvvm_util.data_fifo_pkg.all;
 
+library uvvm_vvc_framework;
+use uvvm_vvc_framework.ti_vvc_framework_support_pkg.all;
+
 library stream_lib;
 use stream_lib.status_pkg.all;
+
+library vip_vld_rdy;
+context vip_vld_rdy.vvc_context;
 
 entity tb_status_to_uart is
 end tb_status_to_uart;
@@ -26,20 +32,24 @@ architecture rtl of tb_status_to_uart is
     signal uart_data_vld : std_logic;
     signal uart_data_rdy : std_logic := '0';
 
-    signal pause_vld : std_logic := '0';
-    signal valid_probability : integer range 0 to 100 := 100;
-     
-    constant input_status_fifo_idx : integer := 0;
-    constant output_uart_fifo_idx : integer := 1;
+    signal tx_data : std_logic_vector(9 downto 0);
 
-    constant buffer_size_bits : integer := 512;
+    constant UART_VVC_IDX : integer := 1;
+    constant STATUS_VVC_IDX : integer := 2;
+
 
 begin
 
+    i_ti_uvvm_engine : entity uvvm_vvc_framework.ti_uvvm_engine;
+
     clock_generator(clk, 8 ns);
 
-
     p_main : process
+        procedure expect_receive(constant data : std_logic_vector; constant msg : string) is
+        begin
+            VLD_RDY_VVC_SB.add_expected(X"0000_00" & data, msg);
+            vld_rdy_receive(VLD_RDY_VVCT, UART_VVC_IDX, msg, TO_SB);
+        end procedure expect_receive;
 
         -- Generate testdata to be sent into the module and also generate 
         -- the expected data coming out of the module.
@@ -51,28 +61,32 @@ begin
             variable eof : std_logic;
         begin
             -- Generate header data for output
-            uvvm_fifo_put(output_uart_fifo_idx, x"53");
-            uvvm_fifo_put(output_uart_fifo_idx, x"48");
-            uvvm_fifo_put(output_uart_fifo_idx, x"41");
+            expect_receive(X"53", "Header");
+            expect_receive(X"48", "Header");
+            expect_receive(X"41", "Header");
+            
             -- Generate random data to send and receive
             status_data : for i in 0 to status_words-1 loop 
                 status_word := random(8);
                 sof := '1' when i = 0 else '0';
                 eof := '1' when i = status_words-1 else '0';
-                uvvm_fifo_put(input_status_fifo_idx, sof & eof & status_word);
-                uvvm_fifo_put(output_uart_fifo_idx, status_word);
+                vld_rdy_write(VLD_RDY_VVCT, STATUS_VVC_IDX, sof & eof & status_word, "Data");
+                expect_receive(status_word, "Data");
             end loop; -- status_data 
             
             -- Generate tail data
-            uvvm_fifo_put(output_uart_fifo_idx, x"0A0D534841");
-
+            expect_receive(X"41", "Tail");
+            expect_receive(X"48", "Tail");
+            expect_receive(X"53", "Tail");
+            expect_receive(X"0D", "Tail");
+            expect_receive(X"0A", "Tail");
         end procedure pd_gen_testdata;
         
     begin
+        await_uvvm_initialization(VOID);
+
         log("Start simulation");
         gen_pulse(rst, clk, 10, "Rst signal");
-        uvvm_fifo_init(input_status_fifo_idx, buffer_size_bits-1);
-        uvvm_fifo_init(output_uart_fifo_idx, buffer_size_bits-1);
         unblock_flag("init_fifos", "fifos initialized", global_trigger);
         
         log("check defaults");
@@ -80,84 +94,22 @@ begin
         check_value(uart_data_vld, '0', "check default uart_data_vld");
 
         pd_gen_testdata(VOID);
-        
-        wait for 1 us; 
-        valid_probability <= 10;
-        pd_gen_testdata(VOID);
-        
-        wait for 2 us;
-        
-        check_value(uvvm_fifo_get_count(input_status_fifo_idx), 0, "Check all data sent");
-        check_value(uvvm_fifo_get_count(output_uart_fifo_idx), 0, "Check all data received");
+        await_completion(ALL_VVCS, 1 ms, "Wait for data done");
 
+        wait for 1 us; 
+        shared_vld_rdy_vvc_config(RX, UART_VVC_IDX).bfm_config.pause_probability := 0.5;
+        pd_gen_testdata(VOID);
+        await_completion(ALL_VVCS, 1 ms, "Wait for data done");
+        
+        
+        check_value(VLD_RDY_VVC_SB.is_empty(VOID), ERROR, "SB is not empty");
+        VLD_RDY_VVC_SB.report_counters(VOID);
+        
+        await_uvvm_completion(1 ns);
         report_alert_counters(FINAL);
         std.env.stop;
         wait;
     end process;
-
-
-
-    p_send_status_data : process
-        variable status_data : std_logic_vector(9 downto 0);
-    begin
-        await_unblock_flag("init_fifos", 100 ns, "waiting for init_fifos flag");
-        -- wait for data in fifo
-        wait_data_loop : while uvvm_fifo_get_count(input_status_fifo_idx) = 0 loop
-            wait until falling_edge(clk);
-        end loop wait_data_loop;
-
-        -- output data
-        status_data := uvvm_fifo_get(input_status_fifo_idx, status_data'length);
-        status.tag <= SOF when status_data(9) = '1' else EOF when status_data(8) = '1' else DATA;
-        status.data <= status_data(7 downto 0);
-        status_vld <= '1';
-        
-        output_data_loop : while uvvm_fifo_get_count(input_status_fifo_idx) /= 0 loop
-            if status_rdy = '1' then
-                status_data := uvvm_fifo_get(input_status_fifo_idx, status_data'length);
-                status.tag <= SOF when status_data(9) = '1' else EOF when status_data(8) = '1' else DATA;
-                status.data <= status_data(7 downto 0);
-                status_vld <= '1';
-            end if;
-            wait until falling_edge(clk);
-        end loop output_data_loop;
-       
-        if status_rdy = '0' then
-            wait until status_rdy = '1';
-        end if;
-
-        status_vld <= '0';
-
-    end process p_send_status_data;
-    
-    p_receive_data : process
-        variable verify_data : std_logic_vector(7 downto 0);
-    begin
-        await_unblock_flag("init_fifos", 100 ns, "waiting for init_fifos flag");
-              
-        get_data_looop: while true loop
-            wait until falling_edge(clk);
-            if uart_data_vld = '1' and uart_data_rdy = '1' then
-                verify_data := uvvm_fifo_get(output_uart_fifo_idx, verify_data'length);
-                log("data was: " & to_hstring(uart_data) & " data should be: " & to_hstring(verify_data));
-                check_value(uart_data, verify_data, "Check uart_data");
-            end if;
-        end loop;
-
-    end process;
-
-    p_pause_pattern : process
-        variable v_percent : integer range 0 to 100;
-    begin
-        wait until rising_edge(clk);
-        v_percent := random(0, 100);
-        pause_vld <= '0'; 
-        if v_percent < valid_probability then
-            pause_vld <= '1';
-        end if;
-    end process;
-
-    uart_data_rdy <= uart_data_vld and pause_vld;
 
     i_status_to_uart : entity stream_lib.status_to_uart
     port map (
@@ -171,5 +123,39 @@ begin
         uart_data_vld => uart_data_vld,
         uart_data_rdy => uart_data_rdy
     );
+
+    i_vld_rdy_vvc : entity vip_vld_rdy.vld_rdy_vvc
+    generic map (
+        GC_DATA_WIDTH => 8,
+        GC_INSTANCE_IDX => UART_VVC_IDX 
+    )
+    port map (
+        tx_data => open,
+        tx_data_vld => open,
+        tx_data_rdy => '0',
+        rx_data => uart_data,
+        rx_data_vld => uart_data_vld,
+        rx_data_rdy => uart_data_rdy,
+        clk => clk
+    );
+
+    status.tag <= SOF when tx_data(9) = '1' else EOF when tx_data(8) = '1' else DATA;
+    status.data <= tx_data(7 downto 0);
+
+    i_status_vld_rdy_vvc : entity vip_vld_rdy.vld_rdy_vvc
+    generic map (
+        GC_DATA_WIDTH => 10,
+        GC_INSTANCE_IDX => STATUS_VVC_IDX 
+    )
+    port map (
+        tx_data => tx_data,
+        tx_data_vld => status_vld,
+        tx_data_rdy => status_rdy,
+        rx_data => x"00" & "00",
+        rx_data_vld => '0',
+        rx_data_rdy => open,
+        clk => clk
+    );
+
 
 end architecture;

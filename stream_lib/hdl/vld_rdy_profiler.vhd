@@ -29,9 +29,8 @@ architecture rtl of vld_rdy_profiler is
     type t_state is (idle_s, send_transitions_s);
     signal state : t_state;
 
-    signal count : unsigned(31 downto 0);
+    signal count : unsigned(31 downto 0) := (others => '0');
     signal transitions : std_logic_vector(31 downto 0);
-    signal transitions_vld : std_logic;
 
     signal status_vld_reg : std_logic := '0';
 begin
@@ -40,10 +39,7 @@ begin
 process (clk)
 begin
     if rising_edge(clk) then
-        transitions_vld <= '0';
         if pps = '1' then
-            transitions <= std_logic_vector(count);
-            transitions_vld <= '1';
             count <= (others => '0');
         elsif vld = '1' and rdy = '1' then
             count <= count + 1;
@@ -63,13 +59,15 @@ begin
 
         case state is
             when idle_s => 
-                if transitions_vld = '1' and status_vld_reg = '0' then
+                if pps = '1' and status_vld_reg = '0' then
+                    transitions <= std_logic_vector(count);
                     status_vld_reg <= '1';
                     status.data <= vld_rdy_profiler_status; 
                     status.tag <= SOF;
                     state <= send_transitions_s;
                     transition := 0;
                 end if;
+
             when send_transitions_s =>
                 if status_vld_reg = '0' or status_rdy = '1' then
                     status_vld_reg <= '1';
@@ -79,7 +77,7 @@ begin
                         state <= idle_s;
                     else
                         status.tag <= DATA;
-                        status.data <= transitions(31-transition*7 downto 24-transition*7);
+                        status.data <= transitions(31-transition*8 downto 24-transition*8);
                         transition := transition + 1;
                     end if;
                 end if;

@@ -13,6 +13,11 @@ library uvvm_util;
 context uvvm_util.uvvm_util_context;
 use uvvm_util.data_fifo_pkg.all;
 
+library uvvm_vvc_framework;
+use uvvm_vvc_framework.ti_vvc_framework_support_pkg.all;
+
+library vip_vld_rdy;
+context vip_vld_rdy.vvc_context;
 
 entity tb_arp_echo_to_status is
 end entity;
@@ -20,6 +25,7 @@ end entity;
 architecture rtl of tb_arp_echo_to_status is
 
     signal clk_i : std_logic := '0';
+    signal stream_slv : std_logic_vector(33 downto 0);
     signal stream_i : t_stream;
     signal stream_vld_i : std_logic := '0';
     signal stream_rdy_o : std_logic;
@@ -27,99 +33,64 @@ architecture rtl of tb_arp_echo_to_status is
     signal status_vld_o : std_logic;
     signal status_rdy_i : std_logic;
 
-    signal pause_vld : std_logic := '1';
-    signal valid_probability : integer := 100;
-
-    constant gen_data_fifo_idx :  integer := 0;
-    constant status_data_fifo_idx :  integer := 1;
-    constant buffer_size_bits: integer := 512;
+    constant STATUS_VVC_IDX : integer := 1;
+    constant STREAM_VVC_IDX : integer := 2;
 begin
+
+    i_ti_uvvm_engine : entity uvvm_vvc_framework.ti_uvvm_engine;
 
     clock_generator(clk_i, 8 ns);
 
-    p_input_data : process
-        variable data : std_logic_vector(33 downto 0);
-    begin
-        await_unblock_flag("init_fifo_flag", 1 us, "waiting for init_fifo_flag to be unlocked");
-        
-        stream_vld_i <= '0';
-
-        -- Wait for data
-        wait_data_loop : while uvvm_fifo_get_count(gen_data_fifo_idx) = 0 loop
-            wait until rising_edge(clk_i);
-        end loop wait_data_loop;
-        data := uvvm_fifo_get(gen_data_fifo_idx, data'length);
-        stream_i <= slv_to_stream(data);
-        stream_vld_i <= '1';
-        
-        while uvvm_fifo_get_count(gen_data_fifo_idx) /= 0 loop
-            if stream_vld_i = '1' and stream_rdy_o = '1' then
-                data := uvvm_fifo_get(gen_data_fifo_idx, data'length);
-                stream_i <= slv_to_stream(data);
-                stream_vld_i <= '0';
-            elsif stream_vld_i = '0' then
-                stream_vld_i <= '1';
-            end if;
-            wait until rising_edge(clk_i);
-        end loop;
-
-    end process;
-
-    p_pause_pattern : process
-        variable v_percent : integer range 0 to 100;
-    begin
-        wait until rising_edge(clk_i);
-        v_percent := random(0, 100);
-        pause_vld <= '0';
-        if v_percent < valid_probability then
-            pause_vld <= '1';
-        end if;
-    end process;
-    
-    status_rdy_i <= '1' and pause_vld;
-    
-    p_check_output : process
-        variable data : std_logic_vector(7 downto 0);
-    begin
-
-        while true loop
-            wait until rising_edge(clk_i);
-            -- wait for output data, check it when it comes and we accept it.
-            if status_vld_o = '1' and status_rdy_i = '1' then
-                data := uvvm_fifo_get(status_data_fifo_idx, data'length);
-                check_value(status_o.data, data, "status_o.data");
-            end if;
-        end loop;  
-    end process;
-
-
     p_stimulus : process
-    procedure add_data (constant data_input : std_logic_vector(31 downto 0)) is
+    procedure add_data (constant data_input : std_logic_vector(31 downto 0); constant last_word : boolean) is
     begin
-        uvvm_fifo_put(gen_data_fifo_idx, stream_to_slv((data=>data_input, tag=>DATA)));
+        if last_word then
+            vld_rdy_write(VLD_RDY_VVCT, STREAM_VVC_IDX, stream_to_slv((data=>data_input, tag=>EOF)), "EOF");
+        else
+            vld_rdy_write(VLD_RDY_VVCT, STREAM_VVC_IDX, stream_to_slv((data=>data_input, tag=>DATA)), "DATA");
+        end if;
+
         for i in 0 to 3 loop
-            uvvm_fifo_put(status_data_fifo_idx, data_input(31-i*8 downto 24-i*8));
+            if last_word and i = 3 then
+                VLD_RDY_VVC_SB.add_expected(x"0000_000" & "00" & status_to_slv((data=>data_input(31-i*8 downto 24-i*8), tag => EOF)), "DATA");
+            else
+                VLD_RDY_VVC_SB.add_expected(x"0000_000" & "00" & status_to_slv((data=>data_input(31-i*8 downto 24-i*8), tag => DATA)), "DATA");
+            end if;
+            vld_rdy_receive(VLD_RDY_VVCT, STATUS_VVC_IDX, "DATA", TO_SB);
         end loop;
     end procedure add_data;
 
     procedure generate_test_data (constant void : t_void) is
     begin
-        uvvm_fifo_put(gen_data_fifo_idx, stream_to_slv((data=>x"000000" & mac_raw_stream, tag=>SOF)));
-        uvvm_fifo_put(status_data_fifo_idx, x"02");
-        add_data(x"01020304");
-        add_data(x"05060708");
-        add_data(x"0a0b0c0d");
-        add_data(x"08060000");
-        add_data(x"01234567"); 
-        uvvm_fifo_put(gen_data_fifo_idx, stream_to_slv((data=>x"00000000", tag=>EOF)));
+        vld_rdy_write(VLD_RDY_VVCT, STREAM_VVC_IDX, stream_to_slv((data=>x"0000_00" & mac_raw_stream, tag=>SOF)), "SOF");
+        VLD_RDY_VVC_SB.add_expected(x"0000_000" & "00" & status_to_slv((data=>X"02", tag=>SOF)), "SOF");
+        vld_rdy_receive(VLD_RDY_VVCT, STATUS_VVC_IDX, "SOF", TO_SB);
+        add_data(x"01020304", false);
+        add_data(x"05060708", false);
+        add_data(x"0a0b0c0d", false);
+        add_data(x"08060000", false);
+        add_data(x"01234567", false); 
+        add_data(x"00000000", true); 
 
     end procedure generate_test_data;
 
+    procedure gen_random_data(constant void : t_void) is
+        variable length : integer;
     begin
+        length := random(4, 10);
+        vld_rdy_write(VLD_RDY_VVCT, STREAM_VVC_IDX, stream_to_slv((data=>x"0000_00" & mac_raw_stream, tag=>SOF)), "SOF");
+        for i in 0 to length-1 loop
+            vld_rdy_write(VLD_RDY_VVCT, STREAM_VVC_IDX, stream_to_slv((data=>random(32), tag=>DATA)), "DATA");
+        end loop;
+        vld_rdy_write(VLD_RDY_VVCT, STREAM_VVC_IDX, stream_to_slv((data=>random(32), tag=>EOF)), "EOF");
+        
+    end procedure gen_random_data;
+
+    begin
+        await_uvvm_initialization(VOID);
+
         log("Starting test");
         log("Check default values");
-        uvvm_fifo_init(gen_data_fifo_idx, buffer_size_bits-1);
-        uvvm_fifo_init(status_data_fifo_idx, buffer_size_bits-1);
         unblock_flag("init_fifo_flag", "unblocking data flag", global_trigger);
         wait for 100 ns;
         wait until rising_edge(clk_i);
@@ -131,12 +102,26 @@ begin
         wait for 100 ns;
         wait until rising_edge(clk_i);
         log("Test 1: Send a packet with ethertype 0x0806");
-        valid_probability <= 25;
+        shared_vld_rdy_vvc_config(RX, STATUS_VVC_IDX).bfm_config.pause_probability := 0.0;
         generate_test_data(void);
+        await_completion(ALL_VVCS, 2 us, "Wait for data done");
 
-        wait for 1 us;
-        check_value(uvvm_fifo_get_count(gen_data_fifo_idx), 0, "gen_data_fifo_idx");
-        check_value(uvvm_fifo_get_count(status_data_fifo_idx), 0, "gen_data_fifo_idx");
+        shared_vld_rdy_vvc_config(RX, STATUS_VVC_IDX).bfm_config.pause_probability := 0.2;
+        gen_random_data(void);
+        generate_test_data(void);
+        await_completion(ALL_VVCS, 2 us, "Wait for data done");
+        
+        shared_vld_rdy_vvc_config(RX, STATUS_VVC_IDX).bfm_config.pause_probability := 0.7;
+        shared_vld_rdy_vvc_config(TX, STREAM_VVC_IDX).bfm_config.pause_probability := 0.7;
+        gen_random_data(void);
+        gen_random_data(void);
+        generate_test_data(void);
+        await_completion(ALL_VVCS, 5 us, "Wait for data done");
+        
+        shared_vld_rdy_vvc_config(RX, STATUS_VVC_IDX).bfm_config.pause_probability := 0.8;
+        shared_vld_rdy_vvc_config(TX, STREAM_VVC_IDX).bfm_config.pause_probability := 0.9;
+        generate_test_data(void);
+        await_completion(ALL_VVCS, 2 us, "Wait for data done");
 
         report_alert_counters(FINAL);
         std.env.stop;
@@ -153,5 +138,35 @@ begin
             status_vld_o => status_vld_o,
             status_rdy_i => status_rdy_i
         );
+    
+    i_status_vvc : entity vip_vld_rdy.vld_rdy_vvc
+        generic map (
+            GC_DATA_WIDTH => 10,
+            GC_INSTANCE_IDX => STATUS_VVC_IDX)
+        port map (
+            tx_data => open,
+            tx_data_vld => open,
+            tx_data_rdy => '0',
+            rx_data => status_to_slv(status_o),
+            rx_data_vld => status_vld_o,
+            rx_data_rdy => status_rdy_i,
+            clk => clk_i
+            );
+ 
+    i_stream_vvc: entity vip_vld_rdy.vld_rdy_vvc
+        generic map (
+            GC_DATA_WIDTH => 34,
+            GC_INSTANCE_IDX => STREAM_VVC_IDX)
+        port map (
+            tx_data => stream_slv,  
+            tx_data_vld => stream_vld_i,
+            tx_data_rdy => stream_rdy_o,
+            rx_data => x"0000_0000" & "00",
+            rx_data_vld => '0',
+            rx_data_rdy => open,
+            clk => clk_i
+            );
+
+        stream_i <= slv_to_stream(stream_slv);
 
 end architecture;

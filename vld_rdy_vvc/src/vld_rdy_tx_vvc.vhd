@@ -45,7 +45,7 @@ entity vld_rdy_tx_vvc is
     --<USER_INPUT> Insert BFM interface signals here
     -- Example: 
     tx_data : out std_logic_vector(GC_DATA_WIDTH-1 downto 0);
-    tx_data_vld : out std_logic;
+    tx_data_vld : out std_logic := '0';
     tx_data_rdy : in std_logic;
     -- VVC control signals: 
     -- rst                         : in std_logic; -- Optional VVC Reset

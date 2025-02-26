@@ -28,7 +28,8 @@ hr.add_files(filename='stream_lib/hdl/*.vhd')
 hr.add_files(filename='stream_lib/tb/*.vhd')
 
 hr.set_library(library_name='olo_lib')
-hr.add_files(filename='open-logic/src/base/vhdl/olo_base_pkg_array.vhd')
+# hr.add_files(filename='open-logic/src/base/vhdl/olo_base_pkg_array.vhd')
+hr.add_files(filename='open-logic/src/base/vhdl/*.vhd')
 
 hr.add_files("network_lib/hdl/*.vhd", "network_lib")
 hr.add_files("network_lib/tb/*.vhd", "network_lib")

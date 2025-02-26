@@ -3,3 +3,10 @@ hdlreg
 hdlreg_osvvm
 network_project/sp605/network_project/
 network_project/sp605/ipcore_dir/
+stream_lib/formal/*/
+.vscode/
+/**/transcript
+/**/UVVM_Alert.txt
+/**/UVVM_Log.txt
+/**/vsim_stacktrace.vstf
+/**/vsim.wlf

@@ -31,6 +31,7 @@ def decode_arp(data: bytearray):
     # target ip as standard ip format
     target_ip = '.'.join([str(x) for x in payload[24:28]])
     print(f"operation: {operation} sender_mac: {sender_mac} sender_ip: {sender_ip} target_mac: {target_mac} target_ip: {target_ip}")
+    print(f"payload: {':'.join(['{:02x}'.format(x) for x in payload[0:]])}")
 
 
 def decode(message_type: bytes, message_body: bytearray):
@@ -38,7 +39,7 @@ def decode(message_type: bytes, message_body: bytearray):
     if message_type == 1:
         transitions = int.from_bytes(message_body, "big")
         print(f"vld_ready_profiler: transitions: {transitions} bytes/s: {transitions*4}")
-    if message_type == 2:
+    elif message_type == 2:
         # print(f"arp data {message_type} length: {len(message_body)} body: {message_body}")
         print(f"\narp data {message_type} length: {len(message_body)}")
         decode_arp(message_body)
@@ -59,4 +60,5 @@ while True:
 
     if data[-5:-2] == 'AHS'.encode("utf-8"):
         new_data = True
+        print(f"data: {':'.join(['{:02x}'.format(x) for x in data[0:]])}")
         decode(data[3], data[4:-5])

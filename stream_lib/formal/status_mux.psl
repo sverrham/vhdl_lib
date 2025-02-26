@@ -1,0 +1,20 @@
+vunit formal_status_mux(status_mux(rtl)) {
+
+   -----------------------------------------------------------------
+   -- Assumptions
+   -----------------------------------------------------------------
+	default clock is rising_edge(clk);
+
+  -----------------------------------------------------------------
+   -- Assertions
+   -----------------------------------------------------------------
+  stable_output : assert always not rst and status_out_vld and not status_out_rdy -> next status_out_vld and stable(status_out);
+
+--  in_to_out : assert always not rst and (status_in_vld(0) or status_in_vld(1)) ->  {(not status_out_valid ; status_out_vld)};
+
+	-----------------------------------------------------------------
+	-- Cover
+  -----------------------------------------------------------------
+ 	-- cover_receive_data : cover {not Rx_Valid; Rx_Valid};
+  cover_send_data: cover {status_out_rdy and status_out_vld; not status_out_vld};
+}

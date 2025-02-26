@@ -1,0 +1,28 @@
+[tasks]
+cover
+proof
+proof_bmc
+
+[options]
+depth 30 
+cover: mode cover
+proof: mode prove  
+proof_bmc: mode bmc
+
+[engines]
+cover: smtbmc yices
+proof: abc pdr 
+proof_bmc: smtbmc yices
+
+[script]
+ghdl --std=08 \
+--work=stream_lib status_pkg.vhd \
+status_mux.psl \
+status_mux.vhd -e status_mux 
+
+prep -top status_mux 
+
+[files]
+../hdl/status_mux.vhd
+../hdl/status_pkg.vhd
+./status_mux.psl

@@ -25,6 +25,7 @@ end entity;
 architecture rtl of tb_arp_echo_to_status is
 
     signal clk_i : std_logic := '0';
+    signal rst_i : std_logic := '1';
     signal stream_slv : std_logic_vector(33 downto 0);
     signal stream_i : t_stream;
     signal stream_vld_i : std_logic := '0';
@@ -90,9 +91,12 @@ begin
         await_uvvm_initialization(VOID);
 
         log("Starting test");
+
         log("Check default values");
         unblock_flag("init_fifo_flag", "unblocking data flag", global_trigger);
         wait for 100 ns;
+        wait until rising_edge(clk_i);
+        rst_i <= '0';
         wait until rising_edge(clk_i);
 
         check_value(stream_rdy_o, '1', "stream_rdy_o");
@@ -131,6 +135,7 @@ begin
     dut : entity work.arp_echo_to_status
         port map (
             clk_i => clk_i,
+            rst_i => rst_i,
             stream_i => stream_i,
             stream_vld_i => stream_vld_i,
             stream_rdy_o => stream_rdy_o,

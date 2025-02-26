@@ -68,6 +68,9 @@ begin
       send_expect_receive(input => input, status => (tag=>EOF, data=>random(8)), msg => "EOF");
     end procedure generate_random_testdata;
 
+    type RealArray is array (natural range <>) of real;
+    -- constant pause_pattern_array : RealArray := (0.0, 0.2);
+    constant pause_pattern_array : RealArray := (0.0, 0.2, 0.4, 0.6, 0.8, 0.9);
   begin
     await_uvvm_initialization(VOID);
     
@@ -100,7 +103,17 @@ begin
     generate_random_testdata(0);
     generate_random_testdata(1);
     await_completion(ALL_VVCS, 1 ms, "wait for completion");
-    
+     
+   
+    -- for i in pause_pattern_array'range loop
+    --   log("Pause probability: " & real'image(pause_pattern_array(i)));
+    --   shared_vld_rdy_vvc_config(RX, STATUS_OUTPUT_VVC_IDX).bfm_config.pause_probability := pause_pattern_array(i);
+    --   shared_vld_rdy_vvc_config(TX, STATUS_INPUT_VVC_IDX).bfm_config.pause_probability := pause_pattern_array(i);
+    --   generate_random_testdata(0);
+    --   generate_random_testdata(1);
+    --   await_completion(ALL_VVCS, 1 ms, "wait for completion");
+    -- end loop;
+
     await_uvvm_completion(1 ns);
     report_alert_counters(FINAL);
     std.env.stop;

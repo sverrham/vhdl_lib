@@ -31,8 +31,8 @@ end entity;
 architecture rtl of status_mux is
 
     type t_state is (idle_s, data_s, discard_s);
-    signal state : t_state;
-    signal current_source : integer := 0;
+    signal state : t_state := idle_s;
+    signal current_source : integer range 0 to STATUS_MUX_SOURCES-1 := 0;
     signal status_out_vld_reg : std_logic;
 
 begin
@@ -57,28 +57,24 @@ begin
           status_out_vld_reg <= '0';
         end if;
 
-        -- status_in_rdy <= (others => '0');
         case state is
           when idle_s =>
             -- loop through all sources until we find a valid active source.
             -- Discard data if active data but not SOF
             
-            if current_source = STATUS_MUX_SOURCES-1 then
-              current_source <= 0;
-            else
-              current_source <= current_source + 1;
-            end if;
-
             if status_in_vld(current_source) = '1' then
               if status_in(current_source).tag = SOF then
                 -- Found a valid source, move to data state.
                 state <= data_s;
-                current_source <= current_source;
               else
                 -- Discard data.
-                -- status_in_rdy(current_source) <= '1';
                 state <= discard_s;
-                current_source <= current_source;
+              end if;
+            else
+              if current_source = STATUS_MUX_SOURCES-1 then
+                current_source <= 0;
+              else
+                current_source <= current_source + 1;
               end if;
             end if;
 
@@ -98,7 +94,6 @@ begin
             if status_in_vld(current_source) = '1' and (status_out_vld_reg = '0' or status_out_rdy = '1') then
               status_out <= status_in(current_source);
               status_out_vld_reg <= '1';
-              -- status_in_rdy(current_source) <= '1';
               if status_in(current_source).tag = EOF then
                 state <= idle_s;
                 if current_source = STATUS_MUX_SOURCES-1 then

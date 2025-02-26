@@ -35,7 +35,8 @@ architecture rtl of mac_to_stream is
         s_idle,
         s_length_high,
         s_length_low,
-        s_data
+        s_data,
+        s_eof
     );
 
     signal state : t_state;
@@ -53,6 +54,7 @@ begin
 
     p_main : process (clk_i) is
         variable v_data : std_logic_vector(7 downto 0);
+        variable v_eof_sent : boolean;
     begin
         if rising_edge(clk_i) then
             rd_en_o <= '0';
@@ -71,6 +73,7 @@ begin
                         pkt_bytes(15 downto 8) <= unsigned(data_i); 
                         rd_en_o <= '1';
                         pkt_lengt_wrong <= false;
+                        v_eof_sent := false;
                     end if;    
 
                 when s_length_high =>
@@ -99,11 +102,12 @@ begin
                             end if;
 
                             if data_rdy_i = '1' or data_vld = '0' then
-                                pkt_bytes <= pkt_bytes - 1;
                                 data_o.data <= data_buffer & v_data ;
                                 if pkt_bytes = 0 then
                                     data_o.tag <= EOF;
+                                    v_eof_sent := true;
                                 else
+                                    pkt_bytes <= pkt_bytes - 1;
                                     data_o.tag <= DATA;
                                 end if;
                                 data_vld <= '1';
@@ -114,11 +118,25 @@ begin
 
                         end case;
                     
-                    if empty_i = '1' and (data_rdy_i = '1' or data_vld = '0') then
-                        pkt_lengt_wrong <= pkt_bytes /= 0;
+                    -- if empty_i = '1' and (data_rdy_i = '1' or data_vld = '0') then
+                    if empty_i = '1' then
                         rd_en_o <= '0';
                         state <= s_idle;
+                        if pkt_bytes /= 0 or not v_eof_sent then
+                            pkt_lengt_wrong <= pkt_bytes /= 0;
+                            state <= s_eof;
+                        end if;
                     end if;
+
+                when s_eof =>
+                    -- Send EOF we exited before sending it.
+                    if data_rdy_i = '1' or data_vld = '0' then
+                        data_o.data <= x"BEEFAA55";
+                        data_o.tag <= EOF;
+                        data_vld <= '1';
+                        state <= s_idle;
+                    end if;
+
 
             end case;
 
@@ -128,5 +146,8 @@ begin
             end if;
         end if;
     end process;
+
+-- psl default clock is rising_edge(clk_i);
+-- psl bad_eof : assert always (empty_i = '1') -> (pkt_bytes /= 0);
 
 end architecture;

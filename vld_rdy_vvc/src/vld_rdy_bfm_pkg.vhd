@@ -147,7 +147,6 @@ package body vld_rdy_bfm_pkg is
       wait until rx_data_vld = '1';
     end if;
 
-    data(rx_data'range) := rx_data;
 
     -- wait for pause pattern if configured
     if config.pause_probability > 0.0 then
@@ -161,9 +160,9 @@ package body vld_rdy_bfm_pkg is
     end if;
 
     rx_data_rdy <= '1'; -- Set it high
-
     wait until rising_edge(clk);
 
+    data(rx_data'range) := rx_data;
     rx_data_rdy <= '0'; -- Set it low
 
   end procedure vld_rdy_read;

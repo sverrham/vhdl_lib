@@ -62,6 +62,12 @@ architecture rtl of ethernet_test_top is
     signal status : t_status;
     signal status_vld : std_logic;
     signal status_rdy : std_logic;
+    signal vld_rdy_profiler_status : t_status;
+    signal vld_rdy_profiler_status_vld : std_logic;
+    signal vld_rdy_profiler_status_rdy : std_logic;
+    signal arp_echo_status : t_status;
+    signal arp_echo_status_vld : std_logic;
+    signal arp_echo_status_rdy : std_logic;
 
 	signal uart_rx_vld  : std_logic;
 	signal uart_tx_vld  : std_logic;
@@ -164,27 +170,30 @@ begin
         data_rdy_i => data_stream_rdy
     );
 
-    -- vld_rdy_profiler_mac_output : entity stream_lib.vld_rdy_profiler
-    -- port map (
-    --     clk => clock_125,
-    --     vld => data_stream_vld,
-    --     rdy => data_stream_rdy,
-    --     pps => pps,
-    --     status => status,
-    --     status_rdy => status_rdy,
-    --     status_vld => status_vld
-    -- ); 
-    
+    vld_rdy_profiler_mac_output : entity stream_lib.vld_rdy_profiler
+    port map (
+        clk => clock_125,
+        vld => data_stream_vld,
+        rdy => data_stream_rdy,
+        pps => pps,
+        status => vld_rdy_profiler_status,
+        status_rdy => vld_rdy_profiler_status_rdy,
+        status_vld => vld_rdy_profiler_status_vld
+    ); 
+
     arp_echo_to_status_inst : entity network_lib.arp_echo_to_status
     port map (
         clk_i => clock_125,
+        rst_i => reset,
         stream_i => data_stream,
         stream_vld_i => data_stream_vld,
         stream_rdy_o => data_stream_rdy,
-        status_o => status,
-        status_vld_o => status_vld,
-        status_rdy_i => status_rdy
+        status_o => arp_echo_status,
+        status_vld_o => arp_echo_status_vld,
+        status_rdy_i => arp_echo_status_rdy
     );
+
+    -- arp_echo_status_rdy <= '1';
 
     -- stream_to_status_short_inst : entity stream_lib.stream_to_status_short
     -- port map (
@@ -212,12 +221,37 @@ begin
     --     Out_Ready => uart_tx_rdy,
     --     Out_Data => uart_tx_data 
     -- );
-   
+
+    status_mux_inst : entity stream_lib.status_mux
+    generic map (
+        STATUS_MUX_SOURCES => 2
+    )
+    port map (
+        clk => clock_125,
+        rst => reset,
+        status_in_vld(0) => arp_echo_status_vld,
+        -- status_in_vld(0) => '0',
+        status_in_vld(1) => vld_rdy_profiler_status_vld,
+        status_in_rdy(0) => arp_echo_status_rdy,
+        status_in_rdy(1) => vld_rdy_profiler_status_rdy,
+        status_in(0) => arp_echo_status,
+        status_in(1) => vld_rdy_profiler_status,
+        status_out_vld => status_vld,
+        status_out_rdy => status_rdy,
+        status_out => status
+    );
+
     status_to_uart_inst : entity stream_lib.status_to_uart
     port map (
         clk => clock_125,
         rst => reset,
         pps => pps,
+        -- status => vld_rdy_profiler_status,
+        -- status_vld => vld_rdy_profiler_status_vld,
+        -- status_rdy => vld_rdy_profiler_status_rdy,
+        -- status => arp_echo_status,
+        -- status_vld => arp_echo_status_vld,
+        -- status_rdy => arp_echo_status_rdy,
         status => status,
         status_vld => status_vld,
         status_rdy => status_rdy,

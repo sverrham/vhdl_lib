@@ -31,7 +31,7 @@ end entity;
 
 architecture rtl of status_to_uart is
 
-    type t_state is (header_s, data_s, end_s, rn_s);
+    type t_state is (header_s, data_s, pps_s, end_s, rn_s);
     signal state : t_state;
 
     signal header : StlvArray8_t(0 to 2) := (x"53", x"48", x"41"); -- SHA
@@ -86,7 +86,7 @@ begin
                     pps_seen <= '1';
                     if pps_seen = '1' then
                         stuck_in_data <= '1';
-                        state <= end_s; -- just finish the framing.
+                        state <= pps_s; -- just finish the framing.
                     end if;
                 end if;
 
@@ -102,6 +102,14 @@ begin
                         end if;
                     end if;
 
+                end if;
+
+            when pps_s =>
+                -- pps seen, send a byte to show it
+                if uart_data_vld_reg = '0' or uart_data_rdy = '1' then
+                    uart_data <= x"a5"; -- P
+                    uart_data_vld_reg <= '1';
+                    state <= end_s;
                 end if;
 
             when end_s => 
